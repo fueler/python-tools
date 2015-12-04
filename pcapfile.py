@@ -28,6 +28,7 @@ _PCAP_HDR_MAGIC_NUMBER_NS = 0xA1B23C4D  # seconds and nanoseconds
 class PcapHeader(ctypes.Structure):
     """
     C-struct of the following header.
+    https://wiki.wireshark.org/Development/LibpcapFileFormat
 
     typedef struct pcap_hdr_s {
         guint32 magic_number;   /* magic number */
@@ -40,17 +41,34 @@ class PcapHeader(ctypes.Structure):
     } pcap_hdr_t;
     """
 
-    _fields_ = [('magic_number', ctypes.c_uint),
-                ('version_major', ctypes.c_ushort),
-                ('version_minor', ctypes.c_ushort),
-                ('thiszone', ctypes.c_int),
-                ('sigfigs', ctypes.c_uint),
-                ('snaplen', ctypes.c_uint),
-                ('network', ctypes.c_uint),
+    _fields_ = [('magic_number', ctypes.c_uint32),
+                ('version_major', ctypes.c_uint16),
+                ('version_minor', ctypes.c_uint16),
+                ('thiszone', ctypes.c_int32),
+                ('sigfigs', ctypes.c_uint32),
+                ('snaplen', ctypes.c_uint32),
+                ('network', ctypes.c_uint32),
                 # Associated Metadata
                 ('byte_swap', ctypes.c_bool),
                 ('timestamp_in_ns', ctypes.c_bool)]
 
+class PcapRecordHeader(ctypes.Structure):
+    """
+    C-struct of the following header.
+    https://wiki.wireshark.org/Development/LibpcapFileFormat
+
+    typedef struct pcaprec_hdr_s {
+        guint32 ts_sec;         /* timestamp seconds */
+        guint32 ts_usec;        /* timestamp microseconds */
+        guint32 incl_len;       /* number of octets of packet saved in file */
+        guint32 orig_len;       /* actual length of packet */
+    } pcaprec_hdr_t;
+    """
+
+    _fields_ = [('ts_sec', ctypes.c_uint32),
+                ('ts_usec', ctypes.c_uint32),
+                ('incl_len', ctypes.c_uint32),
+                ('orig_len', ctypes.c_uint32)]
 
 def get_logger():
     return _module_logger
@@ -62,7 +80,7 @@ def load(input_file):
     """
 
     header = _read_header(input_file)
-    print header
+    return header
 
 
 def _read_header(input_file):
@@ -117,14 +135,12 @@ def _read_header(input_file):
 
     # todo validate header
 
-    _module_logger.info('read the pcap header %r, byteswap %s', unpacked_header, byte_swap)
-    _module_logger.info('read the pacp header %r', pcap_header)
-    _module_logger.info('read the pacp header %s', pcap_header)
+    _module_logger.info('[%d] pcap header %r, byteswap %s', input_file.tell(), unpacked_header, byte_swap)
+    #_module_logger.info('read the pacp header %r', pcap_header)
 
     return pcap_header
 
-
-def _read_packet(input_file):
+def _read_record(pcap_hdr, input_file):
     """
     read the next packet
     https://wiki.wireshark.org/Development/LibpcapFileFormat
@@ -137,7 +153,7 @@ def _read_packet(input_file):
     #     guint32 orig_len;       /* actual length of packet */
     # } pcaprec_hdr_t;
 
-    pcaprec_hdr_template = "IIII"
+    pcaprec_hdr_fmt = "IIII"
 
     try:
         raw_header = input_file.read(16)  # size of header
@@ -145,6 +161,38 @@ def _read_packet(input_file):
         _module_logger.error('Unable to read pcap packet header')
         raise
 
+    if raw_header == '':
+        return
+
+    if pcap_hdr.byte_swap:
+        unpack_template = ''.join(['>', pcaprec_hdr_fmt])
+    else:
+        unpack_template = ''.join(['<', pcaprec_hdr_fmt])
+
+    unpacked_header = struct.unpack(unpack_template, raw_header)
+    (ts_sec, ts_usec, incl_len, orig_len) = unpacked_header
+    pcap_record = PcapRecordHeader(ts_sec,
+                                   ts_usec,
+                                   incl_len,
+                                   orig_len)
+
+    _module_logger.info('[%d] record header %r', input_file.tell(), unpacked_header)
+
+    return pcap_record
+
+def record_reader(pcap_hdr, input_file):
+    while True:
+        try:
+            record = _read_record(pcap_hdr, input_file)
+            if record:
+                yield record
+            else:
+                break
+        except UnicodeDecodeError:
+            pass  # ignore, file done
+
+def payload_reader(pcap_hdr, record_hdr, input_file):
+    input_file.read(record_hdr.incl_len)
 
 # Temporary Code
 import sys
@@ -156,3 +204,9 @@ ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(me
 _module_logger.setLevel(logging.DEBUG)
 _module_logger.addHandler(ch)
 # End Temporary Code
+
+if __name__ == '__main__':
+    with open('test.pcap', 'rb') as f:
+        hdr = load(f)
+        for record in record_reader(hdr, f):
+            payload_reader(hdr, record, f)
