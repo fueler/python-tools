@@ -12,6 +12,7 @@ Global Header
 import logging
 from network import ethernet
 from network import pcap
+from network import ipv4
 
 __author__ = 'Wayne Moorefield'
 __copyright__ = 'Copyright 2015, Wayne Moorefield'
@@ -59,14 +60,31 @@ _module_logger.addHandler(ch)
 
 if __name__ == '__main__':
     with open('test.pcap', 'rb') as fp:
-        hdr = load(fp)
-        for record in record_reader(hdr, fp):
-            hdr = ethernet.read_ethernet_header(fp, hdr.byte_swap)
+        pcap_hdr = load(fp)
+        for record in record_reader(pcap_hdr, fp):
+            eth_hdr = ethernet.read_ethernet_header(fp, pcap_hdr.byte_swap)
 
             print 'ethernet header'
-            print 'dst:', ' '.join([hex(i) for i in hdr.destination_mac])
-            print 'src:', ' '.join([hex(i) for i in hdr.source_mac])
-            print 'type:', hex(hdr.ethertype)
+            print 'dst:', ' '.join([hex(i) for i in eth_hdr.destination_mac])
+            print 'src:', ' '.join([hex(i) for i in eth_hdr.source_mac])
+            print 'type:', hex(eth_hdr.ethertype)
 
-            payload_reader(hdr, record, fp)
+            if eth_hdr.ethertype == ethernet.ETHERTYPE_IPV4:
+                ipv4_hdr = ipv4.read_ipv4_header(fp, pcap_hdr.byte_swap)
+
+                print 'ipv4 header'
+                print 'version: ', hex(ipv4_hdr.version)
+                print 'hdr len: ', ipv4_hdr.internet_hdr_length
+                print 'dscp: ', ipv4_hdr.dscp
+                print 'total len: ', ipv4_hdr.total_length, ' bytes'
+                print 'identification: ', hex(ipv4_hdr.identification)
+                print 'flags: ', hex(ipv4_hdr.flags)
+                print 'fragment_offset: ', ipv4_hdr.fragment_offset
+                print 'time_to_live: ', ipv4_hdr.time_to_live
+                print 'protocol: ', ipv4_hdr.protocol
+                print 'checksum: ', hex(ipv4_hdr.header_checksum)
+                print 'src:', '.'.join([str(i) for i in ipv4_hdr.source_ip])
+                print 'dst:', '.'.join([str(i) for i in ipv4_hdr.destination_ip])
+
+            payload_reader(pcap_hdr, record, fp)
             break

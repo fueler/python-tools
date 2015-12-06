@@ -43,7 +43,7 @@ class EthernetHeader(object):
         self.ext = ext
 
     def __len__(self):
-        return 14
+        return 14  # FIXME account for ext size
 
 
 def read_ethernet_header(input_stream, byte_swap):
