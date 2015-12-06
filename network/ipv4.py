@@ -47,6 +47,9 @@ class Ipv4Header(object):
         self.destination_ip = destination_ip
         self.options = options
 
+    def __len__(self):
+        return self.internet_hdr_length
+
 
 def read_ipv4_header(input_stream, byte_swap):
     chunk = input_stream.read(20)

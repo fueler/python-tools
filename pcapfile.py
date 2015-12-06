@@ -44,8 +44,9 @@ def record_reader(pcap_hdr, input_file):
         except UnicodeDecodeError:
             pass  # ignore, file done
 
-def payload_reader(pcap_hdr, record_hdr, input_file):
-    input_file.read(record_hdr.incl_len - 14)
+def payload_reader(input_stream, remaining_bytes):
+    input_stream.read(remaining_bytes)
+
 
 # Temporary Code
 import sys
@@ -61,7 +62,7 @@ _module_logger.addHandler(ch)
 if __name__ == '__main__':
     with open('test.pcap', 'rb') as fp:
         pcap_hdr = load(fp)
-        for record in record_reader(pcap_hdr, fp):
+        for record_hdr in record_reader(pcap_hdr, fp):
             eth_hdr = ethernet.read_ethernet_header(fp, pcap_hdr.byte_swap)
 
             print 'ethernet header'
@@ -86,5 +87,6 @@ if __name__ == '__main__':
                 print 'src:', '.'.join([str(i) for i in ipv4_hdr.source_ip])
                 print 'dst:', '.'.join([str(i) for i in ipv4_hdr.destination_ip])
 
-            payload_reader(pcap_hdr, record, fp)
+            remaining_bytes = record_hdr.incl_len - len(eth_hdr) - len(ipv4_hdr)
+            payload_reader(fp, remaining_bytes)
             break
