@@ -2,6 +2,27 @@ import struct
 
 __author__ = 'wmoorefi'
 
+# http://www.iana.org/assignments/protocol-numbers/protocol-numbers.txt
+PROTOCOL_HOPOPTS = 0
+PROTOCOL_ICMP = 1
+PROTOCOL_IGMP = 2
+PROTOCOL_GGP = 3
+PROTOCOL_IPV4 = 4
+PROTOCOL_ST = 5
+PROTOCOL_TCP = 6
+PROTOCOL_CBT = 7
+PROTOCOL_EGP = 8
+PROTOCOL_IGP = 9
+PROTOCOL_BBN_RCC_MON = 10
+PROTOCOL_NVP_II = 11
+PROTOCOL_PUP = 12
+PROTOCOL_ARGUS = 13
+PROTOCOL_EMCON = 14
+PROTOCOL_XNET = 15
+PROTOCOL_CHAOS = 16
+PROTOCOL_UDP = 17
+PROTOCOL_MUX = 18
+
 
 class Ipv4Header(object):
     """
