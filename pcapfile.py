@@ -14,6 +14,7 @@ from network import ethernet
 from network import pcap
 from network import ipv4
 from network import udp
+from network import rtp
 
 __author__ = 'Wayne Moorefield'
 __copyright__ = 'Copyright 2015, Wayne Moorefield'
@@ -70,7 +71,7 @@ if __name__ == '__main__':
             remaining_bytes = record_hdr.incl_len
 
             eth_hdr = ethernet.read_ethernet_header(fp, pcap_hdr.byte_swap)
-            print 'ethernet header'
+            print 'ethernet header ****************'
             print 'dst:', ' '.join([hex(i) for i in eth_hdr.destination_mac])
             print 'src:', ' '.join([hex(i) for i in eth_hdr.source_mac])
             print 'type:', hex(eth_hdr.ethertype)
@@ -79,7 +80,7 @@ if __name__ == '__main__':
 
             if eth_hdr.ethertype == ethernet.ETHERTYPE_IPV4:
                 ipv4_hdr = ipv4.read_ipv4_header(fp, pcap_hdr.byte_swap)
-                print 'ipv4 header'
+                print 'ipv4 header ****************'
                 print 'version: ', hex(ipv4_hdr.version)
                 print 'hdr len: ', ipv4_hdr.internet_hdr_length
                 print 'dscp: ', ipv4_hdr.dscp
@@ -97,6 +98,7 @@ if __name__ == '__main__':
 
                 if ipv4_hdr.protocol == ipv4.PROTOCOL_UDP:
                     udp_hdr = udp.read_udp_header(fp, pcap_hdr.byte_swap)
+                    print 'udp header ****************'
                     print 'src_port: ', udp_hdr.source_port
                     print 'dst_port: ', udp_hdr.destination_port
                     print 'length: ', udp_hdr.length
@@ -104,5 +106,16 @@ if __name__ == '__main__':
 
                     remaining_bytes -= len(udp_hdr)
 
+                    # FIXME for now assume RTP as the UDP payload
+                    rtp_hdr = rtp.read_rtp_header(fp, pcap_hdr.byte_swap)
+                    print 'rtp header ****************'
+                    print 'version: ', rtp_hdr.version
+                    print 'payload_type: ', rtp_hdr.payload_type
+                    print 'seq number: ', rtp_hdr.sequence_number
+                    print 'timestamp: ', rtp_hdr.timestamp
+                    print 'ssrc: ', hex(rtp_hdr.ssrc)
+
+                    remaining_bytes -= len(rtp_hdr)
+
             payload_reader(fp, remaining_bytes)
-            break
+            #break
