@@ -15,6 +15,7 @@ from network import pcap
 from network import ipv4
 from network import udp
 from network import rtp
+from h264 import nalu
 
 __author__ = 'Wayne Moorefield'
 __copyright__ = 'Copyright 2015, Wayne Moorefield'
@@ -116,6 +117,18 @@ if __name__ == '__main__':
                     print 'ssrc: ', hex(rtp_hdr.ssrc)
 
                     remaining_bytes -= len(rtp_hdr)
+
+                    if udp_hdr.destination_port == 20010:
+                        # H264 NAL
+                        nalu_header = nalu.read_nalu_header(fp, pcap_hdr.byte_swap)
+                        print 'nalu header ****************'
+                        print 'nal_ref_idc:', nalu_header.nal_ref_idc
+                        print 'nal_unit_type:', nalu_header.nal_unit_type
+                        break
+
+                    if udp_hdr.destination_port == 20008:
+                        # Audio
+                        pass
 
             payload_reader(fp, remaining_bytes)
             #break
